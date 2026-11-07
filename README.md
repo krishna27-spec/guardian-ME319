@@ -49,7 +49,7 @@ MATLAB is several times faster than Octave.
 | File | Role |
 |---|---|
 | `simulate_engagement.m` | closed loop with the assignment's pulse rules (0→1 edges, 1 s recharge) and hit test (distance from the beam ray to the true target) |
-| `target_truth.m`, `scenario_spec.m` | true trajectories (A, B, C, BC, random admissible cases with limit checks) |
+| `target_truth.m`, `scenario_spec.m` | true trajectories (A, B, C, BC, MB = B with three blackouts, random admissible cases with limit checks); blackouts are a list of `[onset end)` rows |
 | `plant_rk4_step.m` | RK4 step of the plant with the voltage held |
 | `run_case_open_loop.m`, `ctrl_loop_sim.m` | open-loop estimator runs; controller-only runs on synthetic references |
 | `loop_margins.m`, `tustin_ss.m`, `settle_time.m`, `shade_blackout.m`, `headless_plots.m` | small helpers |

@@ -63,7 +63,7 @@ for k = 1:n
     L.theta(k) = x(1); L.thetadot(k) = x(2); L.i(k) = x(3); L.V(k) = V; L.sat(k) = d.ctrl.sat;
     L.ref(k) = d.ref; L.refdot(k) = d.refdot; L.xt(k,:) = ptrue';
     L.mode(k) = find(strcmp(d.aim.mode, {'WAIT', 'TRACK', 'HOLD'}));
-    L.valid(k) = v ~= 0; L.blackout(k) = t >= bo(1) && t < bo(2);
+    L.valid(k) = v ~= 0; L.blackout(k) = any(t >= bo(:,1) & t < bo(:,2));
     if v, L.meas(k,:) = r*[cos(th) sin(th)]; end
     e = d.est;
     if e.valid

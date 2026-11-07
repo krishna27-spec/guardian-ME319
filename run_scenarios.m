@@ -26,7 +26,7 @@ for c = 1:numel(cases)
     if isempty(M.miss), M.miss = NaN; end
     name = L_name(sc);
     T(c,:) = [c, M.n_pulses, M.n_hits, M.t_first_hit, mean(M.miss), max(M.miss), M.V_peak, ...
-              100*M.sat_frac, 1e3*M.hold_err_peak, M.est_now_rms, L.bo(2) - L.bo(1)];
+              100*M.sat_frac, 1e3*M.hold_err_peak, M.est_now_rms, sum(L.bo(:,2) - L.bo(:,1))];
     fprintf('%-5s %6d %5d %10.2f %9.2f %9.2f %8.0f %10.1f %8.2f %8.2f\n', name, M.n_pulses, M.n_hits, ...
             M.t_first_hit, mean(M.miss), max(M.miss), M.V_peak, 100*M.sat_frac, 1e3*M.hold_err_peak, M.est_now_rms);
     if ischar(sc), plot_case(L, name, figdir); end

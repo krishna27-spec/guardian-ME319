@@ -34,7 +34,7 @@ if k > G.last_k
     tk = k*p.dt_radar;
     [s, info] = target_truth(tk, scenario);
     bo = info.blackout;
-    if ~(tk >= bo(1) && tk < bo(2))
+    if ~any(tk >= bo(:,1) & tk < bo(:,2))      % inside any blackout row -> no dot
         r_true  = hypot(s(1), s(4));
         th_true = atan2(s(4), s(1));
         idx = min(k+1, numel(G.e_r));

@@ -4,6 +4,8 @@ function spec = scenario_spec(scenario)
 %   'B'  same start, smooth bounded manoeuvre in x and y from t = 1 s
 %   'C'  scenario A motion + radar blackout 1.0 <= t < 1.5 s
 %   'BC' scenario B motion + the same blackout (stress case)
+%   'MB' scenario B motion + THREE blackouts: 1.0-1.5, 1.6-2.1, 4.0-4.5 s
+%        (the brief says "intervals", so more than one per run is possible)
 %   N (integer >= 1)  random admissible case number N (manoeuvre + blackout)
 %   struct with fields .name (any of the above) and .noise_seed
 %        -> same trajectory, different radar noise (Monte Carlo)
@@ -15,7 +17,7 @@ if isstruct(scenario)
 end
 
 spec.noise_seed = noise_seed;
-spec.blackout   = [Inf Inf];       % [onset, end) in s; Inf = none
+spec.blackout   = [Inf Inf];       % one row [onset, end) in s per blackout; Inf = none
 spec.seed       = 0;
 
 if ischar(scenario)
@@ -25,6 +27,7 @@ if ischar(scenario)
         case 'B',  spec.kind = 'manoeuvre';
         case 'C',  spec.kind = 'line';      spec.blackout = [1.0 1.5];
         case 'BC', spec.kind = 'manoeuvre'; spec.blackout = [1.0 1.5];
+        case 'MB', spec.kind = 'manoeuvre'; spec.blackout = [1.0 1.5; 1.6 2.1; 4.0 4.5];
         otherwise, error('scenario_spec: unknown scenario "%s"', scenario);
     end
 elseif isnumeric(scenario) && isscalar(scenario) && scenario >= 1
@@ -32,7 +35,12 @@ elseif isnumeric(scenario) && isscalar(scenario) && scenario >= 1
     spec.kind = 'random';
     spec.seed = round(scenario);
 else
-    error('scenario_spec: scenario must be ''A'',''B'',''C'',''BC'', a positive integer or a struct');
+    error('scenario_spec: scenario must be ''A'',''B'',''C'',''BC'',''MB'', a positive integer or a struct');
 end
 spec.traj_id = spec.name;
+% the brief's limits on every blackout: onset >= 1.0 s, length <= 0.5 s
+bo = spec.blackout;
+if all(isfinite(bo(:))) && (any(bo(:,1) < 1.0 - 1e-9) || any(bo(:,2) - bo(:,1) > 0.5 + 1e-9))
+    error('scenario_spec: blackout in %s breaks the brief''s limits (onset >= 1 s, length <= 0.5 s)', spec.name);
+end
 end

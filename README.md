@@ -14,6 +14,7 @@ Run from this folder, in MATLAB or Octave (no toolboxes needed):
 | `controller_design_check` | plant poles, crossover, phase budget, margins (continuous and sampled), closed-loop and anti-windup poles → `figs/C0_loop_bode.png` | ~5 s |
 | `controller_tests` | step, ramp, parabola, slew and clamp tests of the loop → `figs/C1_controller_tests.png` | ~15 s |
 | `run_scenarios` | full closed loop: Scenarios A, B, C, BC + 20 random cases → `figs/S_*.png`, `figs/results.csv` | ~6 min |
+| `run_multi_blackout` | Scenario B against MB (B with three radar blackouts): the MB row of the paper's Table II, with every pulse | ~25 s |
 
 MATLAB is several times faster than Octave.
 

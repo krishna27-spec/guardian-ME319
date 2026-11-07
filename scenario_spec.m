@@ -7,6 +7,8 @@ function spec = scenario_spec(scenario)
 %   'MB' scenario B motion + THREE blackouts: 1.0-1.5, 1.6-2.1, 4.0-4.5 s
 %        (the brief says "intervals", so more than one per run is possible)
 %   N (integer >= 1)  random admissible case number N (manoeuvre + blackout)
+%   'W1', 'W2', ...   WILD random case: jinking turns, random speed changes
+%        (still inside every limit) and 0-3 random blackouts
 %   struct with fields .name (any of the above) and .noise_seed
 %        -> same trajectory, different radar noise (Monte Carlo)
 
@@ -22,6 +24,9 @@ spec.seed       = 0;
 
 if ischar(scenario)
     spec.name = upper(scenario);
+    if ~isempty(regexp(spec.name, '^W\d+$', 'once'))
+        spec.kind = 'wild'; spec.seed = str2double(spec.name(2:end));
+    else
     switch spec.name
         case 'A',  spec.kind = 'line';
         case 'B',  spec.kind = 'manoeuvre';
@@ -30,12 +35,13 @@ if ischar(scenario)
         case 'MB', spec.kind = 'manoeuvre'; spec.blackout = [1.0 1.5; 1.6 2.1; 4.0 4.5];
         otherwise, error('scenario_spec: unknown scenario "%s"', scenario);
     end
+    end
 elseif isnumeric(scenario) && isscalar(scenario) && scenario >= 1
     spec.name = sprintf('R%d', round(scenario));
     spec.kind = 'random';
     spec.seed = round(scenario);
 else
-    error('scenario_spec: scenario must be ''A'',''B'',''C'',''BC'',''MB'', a positive integer or a struct');
+    error('scenario_spec: scenario must be ''A'',''B'',''C'',''BC'',''MB'', ''W<n>'', a positive integer or a struct');
 end
 spec.traj_id = spec.name;
 % the brief's limits on every blackout: onset >= 1.0 s, length <= 0.5 s

@@ -10,7 +10,7 @@ if isempty(cache) || ~strcmp(cache.id, spec.traj_id)
     cache.id  = spec.traj_id;
     cache.tab = build_trajectory(spec);
     cache.blackout = spec.blackout;
-    if strcmp(spec.kind, 'random')
+    if any(strcmp(spec.kind, {'random', 'wild'}))
         cache.blackout = cache.tab.blackout;
     end
 end
@@ -54,6 +54,21 @@ switch spec.kind
         rng_pop(st);
         if ~ok, error('could not draw an admissible random case %d', spec.seed); end
         return
+    case 'wild'
+        st = rng_push(5000 + spec.seed);
+        ok = false;
+        for attempt = 1:300
+            r0  = 1250 + 400*rand;            el0 = (15 + 50*rand)*pi/180;
+            spd = 30 + 60*rand;               hdg = 2*pi*rand;
+            p0  = r0*[cos(el0) sin(el0)];     v0  = spd*[cos(hdg) sin(hdg)];
+            acc = wild_accel(tt, p0, v0, 1 + rand, p);
+            tab = integrate(tt, p0, v0, acc);
+            if limits_ok(tab, p), ok = true; break; end
+        end
+        tab.blackout = random_blackouts();
+        rng_pop(st);
+        if ~ok, error('could not draw an admissible wild case W%d', spec.seed); end
+        return
 end
 % TRICK 7: the generator must enforce the limits, so every fixed scenario is checked
 if ~limits_ok(tab, p)
@@ -67,6 +82,59 @@ function acc = manoeuvre(tt, t_on, amp, w, phi)
 tau  = max(tt - t_on, 0);
 ramp = min(tau/0.5, 1); ramp = 3*ramp.^2 - 2*ramp.^3;
 acc  = [amp(1)*sin(w(1)*tau + phi(1)), amp(2)*sin(w(2)*tau + phi(2))] .* ramp;
+end
+
+function acc = wild_accel(tt, p0, v0, t_on, p)
+% WILD manoeuvre: the drone keeps changing its mind. At random instants
+% (every 0.4-1.8 s) it picks a new command in its own velocity frame:
+% a hard turn left or right (lateral, up to ~19.5 m/s^2) plus a random
+% speed-up or slow-down (tangential). Commands are blended with a smoothstep
+% over 0.2 s, so acceleration stays continuous. Soft "walls" steer it back
+% before it would leave the range / elevation / speed limits.
+A = 19.5; h = tt(2) - tt(1); n = numel(tt);
+% command schedule: switch times and [lateral tangential] commands.
+% The turn side is kept with probability 0.65, so turns often last 1-4 s
+% (long arcs and loops), not just a zigzag that averages out.
+ts = t_on; while ts(end) < tt(end), ts(end+1) = ts(end) + 0.4 + 1.4*rand; end
+cmd = zeros(numel(ts), 2); side = sign(rand - 0.5);
+for j = 1:numel(ts)
+    if rand > 0.65, side = -side; end
+    an = side * A*(0.7 + 0.3*rand);                   % hard turn
+    at = A*(2*rand - 1)*0.6;                          % speed up / slow down
+    c = [an at]; if norm(c) > A, c = A*c/norm(c); end
+    cmd(j,:) = c;
+end
+acc = zeros(n, 2); x = p0; v = v0; j = 0; prev = [0 0];
+for k = 1:n
+    t = tt(k);
+    while j < numel(ts) && t >= ts(j+1), j = j + 1; if j > 1, prev = cmd(j-1,:); end, end
+    if j == 0, c = [0 0];
+    else
+        b = min((t - ts(j))/0.2, 1); b = 3*b^2 - 2*b^3;
+        c = prev*(1 - b) + cmd(j,:)*b;
+    end
+    spd = norm(v); ev = v/max(spd, 1e-6); en = [-ev(2) ev(1)];
+    at = c(2) + 1.5*max(25 - spd, 0) - 1.5*max(spd - 130, 0);    % speed walls
+    a = c(1)*en + at*ev;
+    r = norm(x); er = x/r; el = atan2(x(2), x(1)); ee = [-sin(el) cos(el)];
+    a = a - 0.08*max(r - 1800, 0)*er + 0.08*max(1000 - r, 0)*er ...         % range walls
+          - 0.6*r*max(el - 75*pi/180, 0)*ee + 0.6*r*max(0 - el, 0)*ee;      % elevation walls
+    if norm(a) > A, a = A*a/norm(a); end
+    if t < t_on, a = [0 0]; end
+    acc(k,:) = a;
+    v = v + a*h; x = x + v*h;
+end
+end
+
+function bo = random_blackouts()
+% 0-3 blackouts, each: onset >= 1 s, length 0.05-0.5 s, at least 0.1 s apart
+nb = floor(4*rand); bo = [Inf Inf]; t = 1;
+for j = 1:nb
+    on = t + 2.5*rand; len = 0.05 + 0.45*rand;
+    if on + len > 9.9, break; end
+    if j == 1, bo = [on on+len]; else, bo(end+1,:) = [on on+len]; end
+    t = on + len + 0.1;
+end
 end
 
 function tab = integrate(tt, p0, v0, acc)

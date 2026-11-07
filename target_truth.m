@@ -59,9 +59,9 @@ switch spec.kind
         ok = false;
         for attempt = 1:300
             r0  = 1250 + 400*rand;            el0 = (15 + 50*rand)*pi/180;
-            spd = 30 + 60*rand;               hdg = 2*pi*rand;
+            spd = 25 + 45*rand;               hdg = 2*pi*rand;   % slow = tighter turns
             p0  = r0*[cos(el0) sin(el0)];     v0  = spd*[cos(hdg) sin(hdg)];
-            acc = wild_accel(tt, p0, v0, 1 + rand, p);
+            acc = wild_accel(tt, p0, v0, 0.5 + 0.5*rand, p);
             tab = integrate(tt, p0, v0, acc);
             if limits_ok(tab, p), ok = true; break; end
         end
@@ -86,21 +86,22 @@ end
 
 function acc = wild_accel(tt, p0, v0, t_on, p)
 % WILD manoeuvre: the drone keeps changing its mind. At random instants
-% (every 0.4-1.8 s) it picks a new command in its own velocity frame:
-% a hard turn left or right (lateral, up to ~19.5 m/s^2) plus a random
-% speed-up or slow-down (tangential). Commands are blended with a smoothstep
+% (every 0.3-1.5 s) it picks a new command in its own velocity frame:
+% a hard turn left or right (lateral, 85-100 % of 19.5 m/s^2) plus a random
+% speed-up or slow-down (tangential, up to 80 % of it). Slow drones
+% (25-70 m/s at the start) turn tighter, since the turn rate is a/v. Commands are blended with a smoothstep
 % over 0.2 s, so acceleration stays continuous. Soft "walls" steer it back
 % before it would leave the range / elevation / speed limits.
 A = 19.5; h = tt(2) - tt(1); n = numel(tt);
 % command schedule: switch times and [lateral tangential] commands.
-% The turn side is kept with probability 0.65, so turns often last 1-4 s
+% The turn side is kept with probability 0.75, so turns often last 1-4 s
 % (long arcs and loops), not just a zigzag that averages out.
-ts = t_on; while ts(end) < tt(end), ts(end+1) = ts(end) + 0.4 + 1.4*rand; end
+ts = t_on; while ts(end) < tt(end), ts(end+1) = ts(end) + 0.3 + 1.2*rand; end
 cmd = zeros(numel(ts), 2); side = sign(rand - 0.5);
 for j = 1:numel(ts)
-    if rand > 0.65, side = -side; end
-    an = side * A*(0.7 + 0.3*rand);                   % hard turn
-    at = A*(2*rand - 1)*0.6;                          % speed up / slow down
+    if rand > 0.75, side = -side; end
+    an = side * A*(0.85 + 0.15*rand);                 % hard turn
+    at = A*(2*rand - 1)*0.8;                          % speed up / slow down
     c = [an at]; if norm(c) > A, c = A*c/norm(c); end
     cmd(j,:) = c;
 end
@@ -114,7 +115,7 @@ for k = 1:n
         c = prev*(1 - b) + cmd(j,:)*b;
     end
     spd = norm(v); ev = v/max(spd, 1e-6); en = [-ev(2) ev(1)];
-    at = c(2) + 1.5*max(25 - spd, 0) - 1.5*max(spd - 130, 0);    % speed walls
+    at = c(2) + 1.5*max(20 - spd, 0) - 1.5*max(spd - 130, 0);    % speed walls
     a = c(1)*en + at*ev;
     r = norm(x); er = x/r; el = atan2(x(2), x(1)); ee = [-sin(el) cos(el)];
     a = a - 0.08*max(r - 1800, 0)*er + 0.08*max(1000 - r, 0)*er ...         % range walls
@@ -127,10 +128,10 @@ end
 end
 
 function bo = random_blackouts()
-% 0-3 blackouts, each: onset >= 1 s, length 0.05-0.5 s, at least 0.1 s apart
-nb = floor(4*rand); bo = [Inf Inf]; t = 1;
+% 1-3 blackouts, each: onset >= 1 s, length 0.15-0.5 s, at least 0.1 s apart
+nb = 1 + floor(3*rand); bo = [Inf Inf]; t = 1;
 for j = 1:nb
-    on = t + 2.5*rand; len = 0.05 + 0.45*rand;
+    on = t + 2.5*rand; len = 0.15 + 0.35*rand;
     if on + len > 9.9, break; end
     if j == 1, bo = [on on+len]; else, bo(end+1,:) = [on on+len]; end
     t = on + len + 0.1;

@@ -8,7 +8,7 @@ function spec = scenario_spec(scenario)
 %        (the brief says "intervals", so more than one per run is possible)
 %   N (integer >= 1)  random admissible case number N (manoeuvre + blackout)
 %   'W1', 'W2', ...   WILD random case: jinking turns, random speed changes
-%        (still inside every limit) and 0-3 random blackouts
+%        (still inside every limit) and 1-3 random blackouts
 %   struct with fields .name (any of the above) and .noise_seed
 %        -> same trajectory, different radar noise (Monte Carlo)
 
